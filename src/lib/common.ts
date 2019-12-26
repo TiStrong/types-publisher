@@ -2,7 +2,7 @@ import { ensureDir } from "fs-extra";
 
 import { readJson, writeJson } from "../util/io";
 import { joinPaths } from "../util/util";
-import { dataDirPath } from "./settings";
+import { dataDirPath, definitelyTypedPath } from "./settings";
 
 if (process.env.LONGJOHN) {
     console.log("=== USING LONGJOHN ===");
@@ -33,7 +33,7 @@ export interface Options {
 }
 export namespace Options {
     /** Options for running locally. */
-    export const defaults: TesterOptions = { definitelyTypedPath: "../DefinitelyTyped", progress: true, parseInParallel: true };
+    export const defaults: TesterOptions = { definitelyTypedPath, progress: true, parseInParallel: true };
     export const azure: Options = { definitelyTypedPath: undefined, progress: false, parseInParallel: false };
 }
 export interface TesterOptions extends Options {

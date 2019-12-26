@@ -6,18 +6,16 @@ import { Options, Registry } from "./lib/common";
 import {
     AllPackages, AnyPackage, DependencyVersion, getFullNpmName, License, NotNeededPackage, PackageJsonDependency, TypingsData,
 } from "./lib/packages";
-import { sourceBranch, outputDirPath } from "./lib/settings";
+import { definitelyTypedURL, definitelyTypedRepoURL, sourceBranch, outputDirPath } from "./lib/settings";
 import { ChangedPackages, readChangedPackages, skipBadPublishes } from "./lib/versions";
 import { writeFile } from "./util/io";
 import { logger, loggerWithErrors, writeLog, Logger } from "./util/logging";
 import { writeTgz } from "./util/tgz";
 import { assertNever, joinPaths, logUncaughtErrors, sortObjectKeys } from "./util/util";
 import { makeTypesVersionsForPackageJson } from "definitelytyped-header-parser";
-import { mkdir, mkdirp, readFileSync } from "fs-extra";
+import { mkdir, mkdirp } from "fs-extra";
 import * as path from "path";
 import { withNpmCache, CachedNpmInfoClient, UncachedNpmInfoClient } from "./lib/npm-client";
-
-const mitLicense = readFileSync(joinPaths(__dirname, "..", "LICENSE"), "utf-8");
 
 if (!module.parent) {
     const tgz = !!yargs.argv.tgz;
@@ -112,7 +110,7 @@ export function createPackageJSON(typing: TypingsData, version: string, packages
             type: "git",
             url: registry === Registry.Github
                 ? "https://github.com/types/_definitelytypedmirror.git"
-                : "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+                : definitelyTypedRepoURL,
             directory: `types/${typing.name}`,
         },
         scripts: {},
@@ -126,8 +124,6 @@ export function createPackageJSON(typing: TypingsData, version: string, packages
 
     return JSON.stringify(out, undefined, 4);
 }
-
-const definitelyTypedURL = "https://github.com/DefinitelyTyped/DefinitelyTyped";
 
 /** Adds inferred dependencies to `dependencies`, if they are not already specified in either `dependencies` or `peerDependencies`. */
 function getDependencies(packageJsonDependencies: ReadonlyArray<PackageJsonDependency>, typing: TypingsData, allPackages: AllPackages): Dependencies {
@@ -208,12 +204,72 @@ export function createReadme(typing: TypingsData): string {
 export function getLicenseFileText(typing: AnyPackage): string {
     switch (typing.license) {
         case License.MIT:
-            return mitLicense;
+            return mitLicense(typing as TypingsData);
         case License.Apache20:
             return apacheLicense(typing);
         default:
             throw assertNever(typing);
     }
+}
+
+function mitLicense(typing: TypingsData): string {
+    const maxLength = 80;
+    const names = typing.contributors.map(c => c.name + ",");
+    const last = typing.contributors[typing.contributors.length - 1];
+    names[names.length - 1] = last.name + ".";
+    const year = new Date().getFullYear();
+    const padding = "    ";
+    const prefix = `${padding}Copyright ${year}`;
+    const postfix = "All rights reserved.";
+    names.unshift(prefix);
+    names.push(postfix);
+    const sums = [0];
+    const lines: string[][] = [[]];
+    let lineId = 0;
+    let nameId = 0;
+    while (nameId < names.length) {
+        const name = names[nameId];
+        const length = name.length;
+        if (sums[lineId] + length + lines[lineId].length + 1 < maxLength) {
+            lines[lineId].push(name);
+            sums[lineId] += length;
+            nameId += 1;
+        } else {
+            if (sums[lineId] + length + lines[lineId].length < maxLength) {
+                lines[lineId].push(name);
+                nameId += 1;
+            }
+            lineId += 1;
+            lines[lineId] = [];
+            sums[lineId] = padding.length;
+        }
+    }
+    if (!lines[lineId].length) {
+        lines.pop();
+    }
+    const copyright = lines.map(line => line.join(" ")).join(`\n${padding}`);
+    return `    MIT License
+
+${copyright}
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE
+`;
 }
 
 function apacheLicense(typing: TypingsData): string {

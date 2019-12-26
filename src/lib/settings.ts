@@ -8,12 +8,15 @@ export const npmRegistry = `https://${npmRegistryHostName}/`;
 export const githubRegistry = `https://${githubRegistryHostName}/`;
 export const npmApi = "api.npmjs.org";
 /** Note: this is 'types' and not '@types' */
-export const scopeName = "types";
+export const scopeName = "ti.types";
 const root = joinPaths(__dirname, "..", "..");
 export const dataDirPath = joinPaths(root, "data");
 export const outputDirPath = joinPaths(root, "output");
 export const validateOutputPath = joinPaths(root, "validateOutput");
 export const logDir = joinPaths(root, "logs");
+export const definitelyTypedPath = "../types";
+export const definitelyTypedURL = "https://github.com/TiStrong/types";
+export const definitelyTypedRepoURL = "https://github.com/TiStrong/types.git";
 
 /** URL to download the repository from. */
 export const definitelyTypedZipUrl = "https://codeload.github.com/DefinitelyTyped/DefinitelyTyped/tar.gz/master";
